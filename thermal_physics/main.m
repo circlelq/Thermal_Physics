@@ -6,7 +6,7 @@ N = 27; %粒子数
 temp = 5; %温度
 time_step = 0.5e-3;
 n_Itr = 9000; %迭代步数
-nsample = 10; %采样间隔
+nsample = 5; %采样间隔
 count = 0; %记录采样次数
 boltz = 0;
 %创建对象数组
@@ -94,7 +94,13 @@ for i = 1 : 100 %前100步进行标定
     verlet(i);
 end
 
-for i = 101:n_Itr
+%先算1000步
+for i = 101:1000
+    verlet(i);
+end
+
+%平衡后开始采样计算化学势
+for i = 1001:n_Itr
     verlet(i);
     if mod(i,nsample)==0
         count = count + 1;
@@ -146,8 +152,8 @@ ylabel('Temperature');
 title('Temperature - Time Relation');
 
 figure(3)
-tspan2 = (100+9*nsample)*time_step:nsample*time_step:time_step*(n_Itr-1);
-plot(tspan2,chem_p(10:count,1));
+tspan2 = (1000+99*nsample)*time_step:nsample*time_step:time_step*(n_Itr-1);
+plot(tspan2,chem_p(100:count,1));
 legend('Chemical Potential');
 xlabel('time (s)');
 ylabel('Chemical Potential');

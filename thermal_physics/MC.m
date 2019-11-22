@@ -4,8 +4,8 @@ global N temp L sys  n_Itr direc_vec storage_Potential potential potential_old c
 L = 5;  %边长
 N = 27; %粒子数
 temp = 5; %温度
-n_Itr = 1e3; %步数
-nsample = 1; %采样间隔
+n_Itr = 9000; %步数
+nsample = 5; %采样间隔
 count = 0; %记录采样次数
 boltz = 0;
 %创建对象数组
@@ -37,18 +37,24 @@ end
 create_particles();
 calculate_potential();
 potential_old = potential;
-for i = 1:n_Itr
+% 先算1000步
+for i = 1:1000
+    move_a_particle(i);
+end
+% 平衡后开始采样
+for i = 1001:n_Itr
     move_a_particle(i);
     if mod(i,nsample)==0
         count = count + 1;
         widom();
     end        
 end
-tspan = 10*nsample:nsample:n_Itr;
-plot(tspan,chem_p(10:count,1));
+tspan = 1000+100*nsample:nsample:n_Itr;
+plot(tspan,chem_p(100:count,1));
 xlabel('step');
 ylabel('chemical potential');
-
+legend('Chemical Potential');
+title('Chemical Potential - Step Relation');
 
 
 
