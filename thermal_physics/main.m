@@ -1,4 +1,4 @@
-global N temp L sys time_step n_Itr direc_vec storage_Ek storage_Potential storage_a storage_temp chem_p boltz count nsample
+global N temp L sys time_step n_Itr direc_vec storage_Ek storage_Potential storage_a storage_temp chem_p boltz count nsample storage_pressure
 
 %参数设定
 L = 5;  %边长
@@ -20,6 +20,7 @@ storage_Ek = zeros(n_Itr,1);
 storage_Potential = zeros(n_Itr,1);
 storage_a = zeros(n_Itr,N,3);
 storage_temp = zeros(n_Itr,1);
+storage_pressure = zeros(n_Itr,1);
 chem_p = zeros(n_Itr,1);
 
 %方向向量，用于搜索粒子
@@ -29,6 +30,12 @@ direc_vec = zeros(3,27);
 %主算法
 create_particles();
 verlet_loop();
+
+% 循环外更新压强
+
+storage_pressure = storage_pressure /3 /L^3 + N * storage_temp / L^3;
+
+% 画图
 post_process();
 
 
@@ -97,6 +104,8 @@ end
 %先算1000步
 for i = 101:1000
     verlet(i);
+    pressure(i);
+
 end
 
 %平衡后开始采样计算化学势
@@ -106,6 +115,7 @@ for i = 1001:n_Itr
         count = count + 1;
         Widom(i);
     end
+    pressure(i);
 end
 
 end
@@ -129,9 +139,9 @@ end
 
 
 function post_process()
-global time_step n_Itr storage_Ek storage_Potential storage_temp nsample chem_p count
+global time_step n_Itr storage_Ek storage_Potential storage_temp nsample chem_p count storage_pressure
 
-figure(1)
+subplot(2,2,1)
 tspan = 0:time_step:time_step*(n_Itr-1);
 plot(tspan,storage_Ek);
 hold on
@@ -143,7 +153,7 @@ ylabel('Energy');
 title('Energy - Time Relation');
 hold off
 
-figure(2)
+subplot(2,2,2)
 tspan1 = 0:time_step:time_step*(n_Itr-1);
 plot(tspan1,storage_temp);
 legend('Temperature');
@@ -151,11 +161,19 @@ xlabel('time (s)');
 ylabel('Temperature');
 title('Temperature - Time Relation');
 
-figure(3)
+subplot(2,2,3)
 tspan2 = (1000+99*nsample)*time_step:nsample*time_step:time_step*(n_Itr-1);
 plot(tspan2,chem_p(100:count,1));
 legend('Chemical Potential');
 xlabel('time (s)');
 ylabel('Chemical Potential');
 title('Chemical Potential - Time Relation');
+
+subplot(2,2,4)
+tspan1 = 0:time_step:time_step*(n_Itr-1);
+plot(tspan1,storage_pressure');
+legend('Pressure');
+xlabel('time (s)');
+ylabel('Pressure');
+title('Pressure - Time Relation');
 end
