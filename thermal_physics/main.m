@@ -5,7 +5,7 @@ L = 5;  %边长
 N = 27; %粒子数
 temp = 5; %温度
 time_step = 0.5e-3;
-n_Itr = 9000; %迭代步数
+n_Itr = 1e5; %迭代步数
 nsample = 5; %采样间隔
 count = 0; %记录采样次数
 boltz = 0;
@@ -36,9 +36,10 @@ verlet_loop();
 storage_pressure = storage_pressure /3 /L^3 + N * storage_temp / L^3;
 
 % 画图
-post_process();
+% post_process();
 
-
+% 保存文件
+save data1e5
 
 function create_particles()
 global N temp L sys
