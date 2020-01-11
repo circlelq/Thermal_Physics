@@ -1,50 +1,62 @@
-global N temp L sys time_step n_Itr direc_vec storage_Ek storage_Potential storage_a storage_temp chem_p boltz count nsample storage_pressure
+global N temp L sys time_step n_Itr direc_vec storage_Ek storage_Potential ...
+    storage_a storage_temp storage_velocity storage_position...
+    chem_p boltz count nsample storage_pressure
 
-%参数设定
-L = 5;  %边长
-N = 27; %粒子数
-temp = 5; %温度
+%虏脦脢媒脡猫露篓
+L = 5;  %卤脽鲁陇
+N = 27; %脕拢脳脫脢媒
+temp = 5; %脦脗露脠
 time_step = 0.5e-3;
-n_Itr = 1e5; %迭代步数
-nsample = 5; %采样间隔
-count = 0; %记录采样次数
+n_Itr = 5e4; %碌眉麓煤虏陆脢媒
+nsample = 5; %虏脡脩霉录盲赂么
+count = 0; %录脟脗录虏脡脩霉麓脦脢媒
 boltz = 0;
-%创建对象数组
+%麓麓陆篓露脭脧贸脢媒脳茅
 obj_particles(N,1) = Particle;
 sys = obj_particles; 
 
 
-%数据储存
-%下标1：迭代步数； 下标2： 粒子ID
+%脢媒戮脻麓垄麓忙
+%脧脗卤锚1拢潞碌眉麓煤虏陆脢媒拢禄 脧脗卤锚2拢潞 脕拢脳脫ID
 storage_Ek = zeros(n_Itr,1);
 storage_Potential = zeros(n_Itr,1);
 storage_a = zeros(n_Itr,N,3);
 storage_temp = zeros(n_Itr,1);
 storage_pressure = zeros(n_Itr,1);
+storage_velocity = zeros(N,n_Itr,3);
+storage_position = zeros(N,n_Itr,3);
+diffCoef_vel = 0; % 脣脵露脠鹿脴脕陋
+diffCoef_pos = 0; % 脦禄脰脙鹿脴脕陋
 chem_p = zeros(n_Itr,1);
 
-%方向向量，用于搜索粒子
-%下标1： 分量； 下标2： 方向ID
+
+%路陆脧貌脧貌脕驴拢卢脫脙脫脷脣脩脣梅脕拢脳脫
+%脧脗卤锚1拢潞 路脰脕驴拢禄 脧脗卤锚2拢潞 路陆脧貌ID
 direc_vec = zeros(3,27);
 
-%主算法
+%脰梅脣茫路篓
 create_particles();
 verlet_loop();
 
-% 循环外更新压强
+% 脩颅禄路脥芒赂眉脨脗脩鹿脟驴
 
-storage_pressure = storage_pressure /3 /L^3 + N * storage_temp / L^3;
+storage_pressure = storage_pressure /3 /L^3 + N * storage_temp / L^3 ...
+    + 16*pi/3 * (N/L^3)^2 * (2/3/(0.5*L)^9 - 1/(2*L)^3); % 脨脼脮媒脧卯
 
-% 画图
-% post_process();
+% 录脝脣茫脌漏脡垄脧碌脢媒
+[diffCoef_vel,diffCoef_pos] = diffusion();
 
-% 保存文件
-save data1e5
+%%
+% 禄颅脥录
+post_process();
+
+% 卤拢麓忙脦脛录镁
+save data_test5
 
 function create_particles()
 global N temp L sys
 
-%初始化位置
+%鲁玫脢录禄炉脦禄脰脙
 position = zeros(3,1);
 for i = 1:3
     for j = 1:3
@@ -58,9 +70,9 @@ for i = 1:3
     end
 end
 
-%初始化速度
+%鲁玫脢录禄炉脣脵露脠
 for i =1:N
-    % 初始速度在(-0.5,0.5)上均匀分布
+    % 鲁玫脢录脣脵露脠脭脷(-0.5,0.5)脡脧戮霉脭脠路脰虏录
     rand_vel = zeros(3,1);
     rand_vel(1,1) = rand() - 0.5 ;
     rand_vel(2,1) = rand() - 0.5 ;
@@ -68,7 +80,7 @@ for i =1:N
     sys(i,1).v = rand_vel;
 end
 
-%调整初始动量，使得初始动量守恒
+%碌梅脮没鲁玫脢录露炉脕驴拢卢脢鹿碌脙鲁玫脢录露炉脕驴脢脴潞茫
 res_moment = zeros(3,1);
 for i = 1:N
     res_moment = res_moment + sys(i,1).v;
@@ -82,10 +94,10 @@ end
 
 
 function verlet_loop()
-%主循环，verlet算法计算粒子系统演化
-global L n_Itr direc_vec nsample count
+%脰梅脩颅禄路拢卢verlet脣茫路篓录脝脣茫脕拢脳脫脧碌脥鲁脩脻禄炉
+global L n_Itr direc_vec nsample count Ut storage_Potential
 
-%生成方向向量
+%脡煤鲁脡路陆脧貌脧貌脕驴
 for i = 1:3
     for j = 1:3
         for k = 1:3
@@ -97,20 +109,23 @@ for i = 1:3
     end
 end
 
-for i = 1 : 100 %前100步进行标定
-    velocity_calibration(); %先进行速度标定
+%陆脴露脧脢脝脛脺
+Ut = 1 / 4 * (1/(0.5*L)^12 - (0.5*L)^6);
+
+for i = 1 : 1000 %脟掳100虏陆陆酶脨脨卤锚露篓
+    velocity_calibration(); %脧脠陆酶脨脨脣脵露脠卤锚露篓
     verlet(i);
 end
 
-%先算1000步
-for i = 101:1000
+%脧脠脣茫1000虏陆
+for i = 1001:2000
     verlet(i);
     pressure(i);
 
 end
 
-%平衡后开始采样计算化学势
-for i = 1001:n_Itr
+%脝陆潞芒潞贸驴陋脢录虏脡脩霉录脝脣茫禄炉脩搂脢脝
+for i = 2001:n_Itr
     verlet(i);
     if mod(i,nsample)==0
         count = count + 1;
@@ -119,18 +134,20 @@ for i = 1001:n_Itr
     pressure(i);
 end
 
+storage_Potential = storage_Potential - Ut;
+
 end
 
 function velocity_calibration()
 global N temp sys
 
-%速度标定
-instant_temp = 0; %瞬时温度
+%脣脵露脠卤锚露篓
+instant_temp = 0; %脣虏脢卤脦脗露脠
 for i = 1:N
     instant_temp = instant_temp + sys(i,1).Ek*2;
 end
 instant_temp = instant_temp/3/N;
-factor = sqrt(temp / instant_temp);
+factor = sqrt((temp - 0.03) / instant_temp);
 for i = 1:N
     sys(i,1).v = sys(i,1).v .* factor;
 end
@@ -149,7 +166,7 @@ hold on
 plot(tspan,storage_Potential);
 plot(tspan,storage_Potential+storage_Ek);
 legend('Ek','Potential','total');
-xlabel('time (s)');
+xlabel('time');
 ylabel('Energy');
 title('Energy - Time Relation');
 hold off
@@ -158,15 +175,15 @@ subplot(2,2,2)
 tspan1 = 0:time_step:time_step*(n_Itr-1);
 plot(tspan1,storage_temp);
 legend('Temperature');
-xlabel('time (s)');
+xlabel('time');
 ylabel('Temperature');
 title('Temperature - Time Relation');
 
 subplot(2,2,3)
-tspan2 = (1000+99*nsample)*time_step:nsample*time_step:time_step*(n_Itr-1);
+tspan2 = (2000+99*nsample)*time_step:nsample*time_step:time_step*(n_Itr-1);
 plot(tspan2,chem_p(100:count,1));
 legend('Chemical Potential');
-xlabel('time (s)');
+xlabel('time');
 ylabel('Chemical Potential');
 title('Chemical Potential - Time Relation');
 
@@ -174,7 +191,7 @@ subplot(2,2,4)
 tspan1 = 0:time_step:time_step*(n_Itr-1);
 plot(tspan1,storage_pressure');
 legend('Pressure');
-xlabel('time (s)');
+xlabel('time');
 ylabel('Pressure');
 title('Pressure - Time Relation');
 end

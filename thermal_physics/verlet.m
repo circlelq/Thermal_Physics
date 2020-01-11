@@ -2,24 +2,32 @@ function verlet(id_Itr)
 %单步的verlet算法
 %id_Itr: 当前迭代步数
 
-global N L sys direc_vec time_step storage_a storage_Ek storage_Potential storage_temp n_Itr
+global N L sys direc_vec time_step storage_a storage_Ek storage_Potential ...
+    storage_temp n_Itr storage_velocity storage_position Ut
 
 %搜索临近粒子及像粒子
-if id_Itr == 1
+if id_Itr == 1  % 启动计算
     for i = 1:N
         for j = i+1:N
             for k = 1 : N  %搜索像粒子
                 relative_R = sys(i,1).pos - sys(j,1).pos + direc_vec(:,k);
-                R = sum(relative_R.*relative_R); %计算距离
-                term1 = R^(-6);
-                term2 = R^(-3);
                 
-                if R < 0.25*L*L %小于截断距离
-                    F = -24 * (2/R*term1 - 1/R*term2) .* relative_R; %计算力
+                %                 if ((relative_R(1,1)<0.1425*L*L) && (relative_R(2,1)<0.1425*L*L)...
+                %                         && (relative_R(2,1)<0.1425*L*L))
+                %                     %小于截断距离，0.1425=0.57 * (0.5 * 0.5)
+                if ((relative_R(1,1)>0.25*L*L) || (relative_R(2,1)>0.25*L*L) ...
+                        || (relative_R(2,1)>0.25*L*L) )
+                    continue
+                end
+                R = sum(relative_R.*relative_R); %计算距离
+                if R < 0.25*L*L
+                    term1 = R^(-6);
+                    term2 = R^(-3);
+                    F = 24 * (2/R*term1 - 1/R*term2) .* relative_R; %计算力
                     %储存加速度
                     for l = 1:3
-                        storage_a(id_Itr,i,l) = storage_a(id_Itr,i,l) - F(l) ; %粒子i的加速度
-                        storage_a(id_Itr,j,l) = storage_a(id_Itr,j,l) + F(l);  %粒子j的加速度
+                        storage_a(id_Itr,i,l) = storage_a(id_Itr,i,l) + F(l) ; %粒子i的加速度
+                        storage_a(id_Itr,j,l) = storage_a(id_Itr,j,l) - F(l);  %粒子j的加速度
                     end
                     
                     %计算势能
@@ -57,37 +65,45 @@ for i = 1:N
     if sys(i,1).pos(3,1)>L || sys(i,1).pos(3,1)<0
         sys(i,1).pos(3,1) = mod(sys(i,1).pos(3,1),L);
     end
+    % 储存位置
+    storage_position(i,id_Itr,:) = sys(i,1).pos;
 end
+
     
-%更新加速度
-if id_Itr ~= n_Itr
-for i = 1:N
-    for j = i+1:N
-        for k = 1 : N  %搜索像粒子
-            relative_R = sys(i,1).pos - sys(j,1).pos + direc_vec(:,k);
-            R = sum(relative_R.*relative_R); %计算距离
-            term1 = R^(-6);
-            term2 = R^(-3);
-            
-            if R < 0.25*L*L %小于截断距离
-                F = -24 * (2/R*term1 - 1/R*term2) .* relative_R; %计算力
-                %储存加速度
-                for l = 1:3
-                    storage_a(id_Itr+1,i,l) = storage_a(id_Itr+1,i,l) - F(l) ; %粒子i的加速度
-                    storage_a(id_Itr+1,j,l) = storage_a(id_Itr+1,j,l) + F(l);  %粒子j的加速度
+%更新加速度 （下一步的加速度）
+if id_Itr ~= n_Itr  % 非最后一步
+    for i = 1:N
+        for j = i+1:N
+            for k = 1 : N  %搜索像粒子
+                relative_R = sys(i,1).pos - sys(j,1).pos + direc_vec(:,k);
+                
+                if ((relative_R(1,1)>0.25*L*L) || (relative_R(2,1)>0.25*L*L) ...
+                        || (relative_R(2,1)>0.25*L*L) )
+                    continue
                 end
                 
-                %计算势能
-                storage_Potential(id_Itr+1,1) = storage_Potential(id_Itr+1,1) ...
-                    + 4*(term1 - term2);
-                break
-            else
-                continue
+                R = sum(relative_R.*relative_R); %计算距离
+                if R < 0.25*L*L %小于截断距离
+                    term1 = R^(-6);
+                    term2 = R^(-3);
+                    F = 24 * (2/R*term1 - 1/R*term2) .* relative_R; %计算力
+                    %储存加速度
+                    for l = 1:3
+                        storage_a(id_Itr+1,i,l) = storage_a(id_Itr+1,i,l) + F(l) ; %粒子i的加速度
+                        storage_a(id_Itr+1,j,l) = storage_a(id_Itr+1,j,l) - F(l);  %粒子j的加速度
+                    end
+                    
+                    %计算势能
+                    storage_Potential(id_Itr+1,1) = storage_Potential(id_Itr+1,1) ...
+                        + 4*(term1 - term2);
+                    break
+                else
+                    continue
+                end
+                
             end
         end
-        
     end
-end
 end
 
 %计算加速度   
@@ -105,7 +121,9 @@ for i = 1:N
     %更新速度 
     sys(i,1).v = sys(i,1).v + 0.5*time_step.*a;    
     
-    %储存数据
+    %储存速度
+    storage_velocity(i,id_Itr,:) = sys(i,1).v;
+    %储存动能
     storage_Ek(id_Itr,1) = storage_Ek(id_Itr,1) + sys(i,1).Ek;
     
     

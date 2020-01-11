@@ -8,10 +8,10 @@ for i = 1:N
     for k = 1:27
         relative_R = new_particle.pos - sys(i,1).pos + direc_vec(:,k);
         R = sum(relative_R.*relative_R); %计算距离
-        term1 = R^(-6);
-        term2 = R^(-3);
-                
+        
         if R < 0.25*L*L %小于截断距离
+            term1 = R^(-6);
+            term2 = R^(-3);
             %计算势能
             new_potential = new_potential + 4*(term1 - term2);
             break

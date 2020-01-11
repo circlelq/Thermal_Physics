@@ -4,7 +4,7 @@ global N temp L sys  n_Itr direc_vec storage_Potential potential potential_old c
 L = 5;  %边长
 N = 27; %粒子数
 temp = 5; %温度
-n_Itr = 9000; %步数
+n_Itr = 1e4; %步数
 nsample = 5; %采样间隔
 count = 0; %记录采样次数
 boltz = 0;
